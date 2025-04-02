@@ -7,6 +7,16 @@ public class DatabaseManager {
     private static final String URL = "jdbc:postgresql://pg-31c972d-rezervacije.c.aivencloud.com:16281/defaultdb?ssl=require";
     private static final String USER = "avnadmin";
     private static final String PASSWORD = "AVNS_RHD2IqWZglPPW-g2Wwv";
+    private Connection connection; // Deklaracija spremenljivke connection
+
+    // Konstruktor za povezovanje z bazo
+    public DatabaseManager() {
+        try {
+            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+        } catch (SQLException e) {
+            e.printStackTrace(); // Za boljšo diagnostiko
+        }
+    }
 
     static {
         try {
@@ -18,29 +28,36 @@ public class DatabaseManager {
         }
     }
 
+    // Getter za povezavo z bazo
     public Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
-    public void testConnection() {
-        try (Connection conn = getConnection()) {
-            if (conn != null) {
-                System.out.println("Povezava je uspešna!");
-            }
-        } catch (SQLException e) {
-            System.out.println("Napaka pri povezovanju z bazo: " + e.getMessage());
-        }
-    }
-
-    public boolean checkLogin(String email, String password) {
+    // Preverjanje, ali uporabnik obstaja in ali je geslo pravilno (geslo je hashirano)
+    public boolean validateUser(String email, String password) {
         String query = "SELECT geslo FROM users WHERE email = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, email);
             ResultSet rs = stmt.executeQuery();
-
             if (rs.next()) {
-                return new BCryptPasswordEncoder().matches(password, rs.getString("geslo"));
+                String hashedPassword = rs.getString("geslo");
+                // Preverjanje hashiranega gesla
+                return new BCryptPasswordEncoder().matches(password, hashedPassword);  // BCrypt je metoda za preverjanje hashiranega gesla
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false; // Če uporabnik ne obstaja ali geslo ni pravilno
+    }
+
+    // Preverjanje, ali je uporabnik admin
+    public boolean isAdmin(String email) {
+        String query = "SELECT admin FROM users WHERE email = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getBoolean("admin"); // Če je v bazi stolpec "admin" nastavljen na true, uporabnik je admin
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -48,6 +65,7 @@ public class DatabaseManager {
         return false;
     }
 
+    // Registracija uporabnika
     public boolean registerUser(String firstName, String lastName, String password, String email, String phone, String address) {
         // Preveri, ali uporabnik že obstaja
         if (userExists(email)) {
@@ -76,6 +94,7 @@ public class DatabaseManager {
         }
     }
 
+    // Preveri, ali uporabnik že obstaja
     private boolean userExists(String email) {
         String query = "SELECT 1 FROM users WHERE email = ?";
         try (Connection conn = getConnection();
@@ -89,5 +108,14 @@ public class DatabaseManager {
         }
     }
 
-
+    // Testna povezava
+    public void testConnection() {
+        try (Connection conn = getConnection()) {
+            if (conn != null) {
+                System.out.println("Povezava je uspešna!");
+            }
+        } catch (SQLException e) {
+            System.out.println("Napaka pri povezovanju z bazo: " + e.getMessage());
+        }
+    }
 }

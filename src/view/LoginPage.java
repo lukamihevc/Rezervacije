@@ -1,10 +1,11 @@
 package view;
+import db.DatabaseManager;
+import controller.LoginController;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import controller.LoginController;
 
 public class LoginPage {
     private JFrame frame;
@@ -15,7 +16,7 @@ public class LoginPage {
         frame = new JFrame("Prijava");
         frame.setLayout(new GridLayout(3, 2));
 
-        JLabel usernameLabel = new JLabel("E-pošta:");
+        JLabel usernameLabel = new JLabel("Uporabniško ime:");
         usernameField = new JTextField();
         JLabel passwordLabel = new JLabel("Geslo:");
         passwordField = new JPasswordField();
@@ -29,20 +30,33 @@ public class LoginPage {
                 String username = usernameField.getText();
                 String password = new String(passwordField.getPassword());
                 LoginController controller = new LoginController();
+
+                // Preverimo, če je prijava uspešna
                 if (controller.login(username, password)) {
-                    JOptionPane.showMessageDialog(frame, "Prijava uspešna!");
-                    // Tukaj lahko nadaljujete s prehodom na naslednjo stran
+                    // Preverimo, ali je uporabnik admin
+                    DatabaseManager dbManager = new DatabaseManager();  // Tukaj uporabljamo DatabaseManager
+                    if (dbManager.isAdmin(username)) {  // Kličemo isAdmin iz DatabaseManager
+                        JOptionPane.showMessageDialog(frame, "Prijava kot admin uspešna");
+                        new AdminPanel(); // Odpri admin panel
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Prijava uspešna");
+                        new MainPage(); // Odpri glavno stran za uporabnika
+                    }
+                    frame.dispose();
                 } else {
-                    JOptionPane.showMessageDialog(frame, "Napačen e-poštni naslov ali geslo.");
+                    JOptionPane.showMessageDialog(frame, "Napačno uporabniško ime ali geslo", "Napaka", JOptionPane.ERROR_MESSAGE);
                 }
             }
         });
 
+
+
+
         registerButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                new RegistrationPage(); // Odpremo stran za registracijo
-                frame.setVisible(false);
+                new RegistrationPage();
+                frame.dispose();
             }
         });
 
@@ -53,7 +67,7 @@ public class LoginPage {
         frame.add(loginButton);
         frame.add(registerButton);
 
-        frame.setSize(400, 200);
+        frame.setSize(420, 300);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
