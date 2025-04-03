@@ -9,6 +9,7 @@ public class Main {
         DatabaseManager dbManager = new DatabaseManager();
         dbManager.testConnection();  // Preverjanje povezave
 
+
         // Zaženite LoginPage
         new LoginPage();
     }
