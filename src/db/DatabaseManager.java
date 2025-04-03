@@ -2,6 +2,12 @@ package db;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.sql.*;
+import java.util.List;
+import java.util.ArrayList;
+import model.Field;  // Uvoz razreda Field
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
+import model.User;
 
 public class DatabaseManager {
     private static final String URL = "jdbc:postgresql://pg-31c972d-rezervacije.c.aivencloud.com:16281/defaultdb?ssl=require";
@@ -25,6 +31,17 @@ public class DatabaseManager {
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
             System.exit(1); // Prekini aplikacijo, če gonilnik ni na voljo
+        }
+    }
+
+    // Povezovanje z bazo
+    public Connection connect() throws SQLException {
+        try {
+            // Vzpostavi povezavo z bazo
+            return DriverManager.getConnection(URL, USER, PASSWORD);
+        } catch (SQLException e) {
+            System.err.println("Napaka pri povezovanju z bazo: " + e.getMessage());
+            throw e;
         }
     }
 
@@ -95,7 +112,7 @@ public class DatabaseManager {
     }
 
     // Preveri, ali uporabnik že obstaja
-    private boolean userExists(String email) {
+    public boolean userExists(String email) {
         String query = "SELECT 1 FROM users WHERE email = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -107,6 +124,316 @@ public class DatabaseManager {
             return false;
         }
     }
+
+    public List<String> getKraji() {
+        List<String> krajiList = new ArrayList<>();
+        String query = "SELECT ime FROM kraji"; // Adjust the query to fit your table structure
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                krajiList.add(rs.getString("ime")); // Add each location name to the list
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return krajiList;
+    }
+
+    public boolean addField(String name, String sport, String imagePath, int locationId, String capacity) {
+        // Updated query to match the column type of 'kapaciteta' as TEXT
+        String query = "INSERT INTO igrisca (ime, sport, slika, kraj_id, kapaciteta) VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            // Set the parameters for the query
+            stmt.setString(1, name);  // Name of the field (ime)
+            stmt.setString(2, sport);  // Sport type (sport)
+            stmt.setString(3, imagePath);  // Image path (slika)
+            stmt.setInt(4, locationId);  // Location ID (kraj_id)
+            stmt.setString(5, capacity);  // Capacity (kapaciteta) as TEXT
+
+            // Execute the insert query and check the result
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;  // Return true if rows were inserted
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;  // Return false if there was an error
+        }
+    }
+
+
+    public int getLocationId(String locationName) {
+        String query = "SELECT id FROM kraji WHERE ime = ?";  // Assuming 'ime' is the location name column
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, locationName);  // Set the location name
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("id");  // Return the ID of the location
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return -1;  // Return -1 if no location found (this could be handled with an error message)
+    }
+
+    public List<Field> getAllFields() {
+        List<Field> fields = new ArrayList<>();
+        String query = "SELECT id, ime, sport, slika, kraj_id, kapaciteta FROM igrisca";
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String ime = rs.getString("ime");
+                String sport = rs.getString("sport");
+                String slika = rs.getString("slika");
+                int krajId = rs.getInt("kraj_id");
+                int kapaciteta = rs.getInt("kapaciteta");
+
+                Field field = new Field(id, ime, sport, slika, krajId, kapaciteta);
+                fields.add(field);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return fields;
+    }
+
+    public boolean updateField(int fieldId, String name, int capacity, int locationId, String imagePath) {
+        String updateQuery = "UPDATE igrisca SET ime = ?, kapaciteta = ?, kraj_id = ?, slika = ? WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(updateQuery)) {
+
+            // Nastavi parametre
+            stmt.setString(1, name);
+            stmt.setInt(2, capacity);
+            stmt.setInt(3, locationId);  // Tukaj pričakujemo int (ID kraja)
+            stmt.setString(4, imagePath);
+            stmt.setInt(5, fieldId);  // Zagotovi, da je to ID, ki obstaja v bazi
+
+            int rowsUpdated = stmt.executeUpdate();
+            return rowsUpdated > 0; // Če je bila posodobitev uspešna
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;  // Če je prišlo do napake pri izvajanju
+    }
+
+
+    public List<String> getAllLocationNames() {
+        List<String> locations = new ArrayList<>();
+        String query = "SELECT ime FROM kraji";  // Predpostavljamo, da imamo tabelo 'kraji' z imeni krajev
+
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                locations.add(rs.getString("ime"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return locations;
+    }
+
+
+
+    public int getLocationIdByName(String locationName) {
+        String query = "SELECT id FROM kraji WHERE ime = ?";
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, locationName);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return -1; // V primeru, da ni bilo najdeno
+    }
+
+
+    // Metoda za brisanje igrišča
+    public void deleteField(int id) {
+        String query = "CALL delete_field(?)"; // Pravilno za procedure
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, id);
+            stmt.execute(); // execute(), ne executeUpdate(), ker ne gre za UPDATE/DELETE/INSERT
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String getKrajNameById(int krajId) {
+        String query = "SELECT ime FROM kraji WHERE id = ?";
+        try (Connection conn = connect();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, krajId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("ime");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "Neznana lokacija"; // Če lokacija ni najdena
+    }
+
+    public String getFieldImagePath(int fieldId) {
+        String imagePath = null;
+        String query = "SELECT slika FROM igrisca WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, fieldId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                imagePath = rs.getString("slika");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return imagePath;
+    }
+
+
+    public boolean updateField(int id, String name, int capacity, String location, String imagePath) {
+        // Popravljena SQL poizvedba
+        String query = "UPDATE igrisca SET ime = ?, kapaciteta = ?, kraj_id = ?, image_path = ? WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            // Nastavi parametre
+            stmt.setString(1, name);
+            stmt.setInt(2, capacity);
+            stmt.setString(3, location); // Dodaj parametre za location
+            stmt.setString(4, imagePath);
+            stmt.setInt(5, id);
+
+            // Izvedi poizvedbo
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+    public Icon getFieldImage(int fieldId) {
+        // Predpostavljamo, da imamo pot do slike shranjeno v bazi, npr. kot besedilo
+        String imagePath = getFieldImagePath(fieldId);
+        if (imagePath != null) {
+            // Naloži sliko iz poti
+            ImageIcon imageIcon = new ImageIcon(imagePath);
+            return imageIcon; // Vrni sliko kot Icon
+        }
+        return null; // Če slike ni, vrni null
+    }
+
+    private boolean updateAdminStatus(int userId, boolean newAdminStatus, DatabaseManager dbManager) {
+        String query = "UPDATE users SET admin = ? WHERE id = ?";
+
+        try (Connection conn = dbManager.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setBoolean(1, newAdminStatus); // Nastavi nov status admina
+            stmt.setInt(2, userId); // Nastavi ID uporabnika
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0; // Če je bilo spremenjenih več kot 0 vrstic, je bila sprememba uspešna
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+
+    public List<User> getAllUsers() {
+        List<User> users = new ArrayList<>();
+        String query = "SELECT * FROM users";  // SQL query to fetch all users
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String ime = rs.getString("ime");
+                String priimek = rs.getString("priimek");
+                String email = rs.getString("email");
+                String geslo = rs.getString("geslo");
+                boolean admin = rs.getBoolean("admin"); // ✅ Popravljeno
+                String telefon = rs.getString("telefonska"); // Fetch the telefon from the database
+                String naslov = rs.getString("naslov"); // Fetch the naslov from the database
+
+                // Now include telefon and naslov when creating the User object
+                User user = new User(id, ime, priimek, email, geslo, admin, telefon, naslov);
+                users.add(user);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return users;
+    }
+
+
+
+    // Method to delete user
+    public void deleteUser(int userId) {
+        String query = "DELETE FROM users WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public int getUserIdByEmail(String email) {
+        String query = "SELECT id FROM users WHERE email = ?";
+        int userId = -1;
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, email);  // Set the email parameter correctly
+            ResultSet rs = stmt.executeQuery();  // Execute the query
+
+            if (rs.next()) {  // Check if the result set has a valid row
+                userId = rs.getInt("id");  // Retrieve the user ID
+                System.out.println("Database returned user ID: " + userId);  // Debugging: Print the user ID
+            } else {
+                System.out.println("No user found with email: " + email);  // Debugging
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return userId;
+    }
+
+
 
     // Testna povezava
     public void testConnection() {
