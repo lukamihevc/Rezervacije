@@ -351,22 +351,22 @@ public class DatabaseManager {
         return null; // Če slike ni, vrni null
     }
 
+    // Method to update admin status using the stored procedure
     private boolean updateAdminStatus(int userId, boolean newAdminStatus, DatabaseManager dbManager) {
-        String query = "UPDATE users SET admin = ? WHERE id = ?";
+        String query = "{ call update_admin_status(?, ?) }"; // Call the stored procedure
 
-        try (Connection conn = dbManager.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
+        try (CallableStatement stmt = dbManager.getConnection().prepareCall(query)) {
+            stmt.setInt(1, userId); // Set the user ID parameter
+            stmt.setBoolean(2, newAdminStatus); // Set the new admin status parameter
 
-            stmt.setBoolean(1, newAdminStatus); // Nastavi nov status admina
-            stmt.setInt(2, userId); // Nastavi ID uporabnika
-
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0; // Če je bilo spremenjenih več kot 0 vrstic, je bila sprememba uspešna
+            stmt.executeUpdate(); // Execute the stored procedure
+            return true; // Return true if the update was successful
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
+            return false; // Return false if there was an exception
         }
     }
+
 
 
 
@@ -400,16 +400,18 @@ public class DatabaseManager {
 
 
 
-    // Method to delete user
+    // Method to delete user using the stored procedure
     public void deleteUser(int userId) {
-        String query = "DELETE FROM users WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setInt(1, userId);
-            stmt.executeUpdate();
+        String query = "{ call delete_user(?) }"; // Call the stored procedure
+
+        try (CallableStatement stmt = connection.prepareCall(query)) {
+            stmt.setInt(1, userId);  // Set the user ID parameter
+            stmt.executeUpdate();     // Execute the stored procedure
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
 
     public int getUserIdByEmail(String email) {
