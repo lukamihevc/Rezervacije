@@ -16,6 +16,18 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Properties;
+
+import org.jdatepicker.impl.JDatePanelImpl;
+import org.jdatepicker.impl.JDatePickerImpl;
+import org.jdatepicker.impl.UtilDateModel;
+
+import org.jdatepicker.impl.DateComponentFormatter;
+
+
+
+
+
 
 
 
@@ -56,9 +68,18 @@ public class MainPage {
         JPanel rezervacijePanel = new JPanel(new BorderLayout());
 
         JPanel topPanel = new JPanel();
-        topPanel.add(new JLabel("Izberi datum (yyyy-MM-dd):"));
-        JTextField datumField = new JTextField(10);
-        topPanel.add(datumField);
+        topPanel.add(new JLabel("Izberi datum"));
+        UtilDateModel model = new UtilDateModel();
+        Properties p = new Properties();
+        p.put("text.today", "Danes");
+        p.put("text.month", "Mesec");
+        p.put("text.year", "Leto");
+
+        JDatePanelImpl datePanel = new JDatePanelImpl(model, p);
+        JDatePickerImpl datePicker = new JDatePickerImpl(datePanel, new DateLabelFormatter());
+
+        topPanel.add(datePicker);
+
 
         JButton osveziButton = new JButton("Osveži");
         topPanel.add(osveziButton);
@@ -102,11 +123,13 @@ public class MainPage {
         Map<Integer, Integer> vrsticaIdMap = new HashMap<>();
 
         osveziButton.addActionListener(e -> {
-            String datum = datumField.getText().trim();
-            if (datum.isEmpty()) {
-                JOptionPane.showMessageDialog(frame, "Prosim vnesi datum.");
+            java.util.Date selectedDate = (java.util.Date) datePicker.getModel().getValue();
+            if (selectedDate == null) {
+                JOptionPane.showMessageDialog(frame, "Prosim izberi datum.");
                 return;
             }
+            LocalDate localDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+
 
             List<Field> fields = dbManager.getAllFields();
             rezervacijeModel.setRowCount(0);  // počisti tabelo
@@ -116,7 +139,7 @@ public class MainPage {
 
             for (Field field : fields) {
                 try {
-                    LocalDate localDate = LocalDate.parse(datum);
+
                     Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
                     Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
 
@@ -171,11 +194,17 @@ public class MainPage {
 
             // Dobimo ID iz mape
             int igrisceId = vrsticaIdMap.get(row);
-            String datum = datumField.getText().trim();
+            java.util.Date selectedDate = (java.util.Date) datePicker.getModel().getValue();
+            if (selectedDate == null) {
+                JOptionPane.showMessageDialog(frame, "Prosim izberi datum.");
+                return;
+            }
+            LocalDate localDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+
 
             try {
                 // Pretvori v LocalDate
-                LocalDate localDate = LocalDate.parse(datum);
+
 
                 // Začetek rezervacije - ob 00:00
                 Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
