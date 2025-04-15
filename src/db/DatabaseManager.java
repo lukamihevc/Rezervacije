@@ -4,14 +4,23 @@ package db;
 
 import model.Session;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+import java.awt.*;
 import java.sql.*;
 import java.util.List;
 import java.util.ArrayList;
 import model.Field;  // Uvoz razreda Field
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
 import model.User;
-import java.sql.Date;
+import view.Reservation;
+
+import java.sql.Timestamp;
+
+import static java.util.jar.Pack200.Packer.PASS;
+
 
 public class DatabaseManager {
     private static final String URL = "jdbc:postgresql://pg-31c972d-rezervacije.c.aivencloud.com:16281/defaultdb?ssl=require";
@@ -50,7 +59,7 @@ public class DatabaseManager {
     }
 
     // Getter za povezavo z bazo
-    public Connection getConnection() throws SQLException {
+    public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
@@ -521,8 +530,75 @@ public class DatabaseManager {
         }
         return false;  // Če ni uporabnika
     }
+    public List<Reservation> getRezervacijeUporabnika(int userId) {
+        List<Reservation> rezervacije = new ArrayList<>();
+        String query = "SELECT r.id, r.zacetek, r.konec, r.igrisce_id, i.kraj_id " +
+                "FROM rezervacije r JOIN igrisca i ON r.igrisce_id = i.id " +
+                "WHERE r.user_id = ? ORDER BY r.zacetek DESC";
 
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Reservation r = new Reservation(
+                        rs.getInt("id"),
+                        rs.getTimestamp("zacetek"),
+                        rs.getTimestamp("konec"),
+                        rs.getInt("igrisce_id"),
+                        rs.getInt("kraj_id")
+                );
+                rezervacije.add(r);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return rezervacije;
+    }
+
+    public String getImeIgriscaById(int igrisceId) {
+        String ime = "";
+        String query = "SELECT ime FROM igrisca WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, igrisceId);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                ime = rs.getString("ime");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return ime;
+    }
+    public int getKrajIdByIgrisceId(int igrisceId) {
+        int krajId = -1;
+
+        String sql = "SELECT kraj_id FROM igrisca WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, igrisceId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    krajId = rs.getInt("kraj_id");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return krajId;
+    }
 
 
 }

@@ -3,6 +3,9 @@ package view;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.time.ZoneId;
 import java.util.List;
 import db.DatabaseManager;
 import model.Field;
@@ -11,6 +14,7 @@ import model.Session;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,47 +30,40 @@ import org.jdatepicker.impl.DateComponentFormatter;
 
 
 
-
-
-
-
-
 public class MainPage {
     private JFrame frame;
     private JTabbedPane tabbedPane;
     private DatabaseManager dbManager;
-
+    private JTable mojeRezervacijeTable;
 
     public MainPage() {
+
         dbManager = new DatabaseManager();
 
         frame = new JFrame("Glavna stran");
-        frame.setSize(500, 400);
+        frame.setSize(800, 600);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout());
 
-        // Add a tabbed pane to hold both "Igriska" and "Rezervacije"
+        // Glavni tabbed pane
         tabbedPane = new JTabbedPane();
 
-        // Create the "Igriska" tab and its content
-        JPanel igriskaPanel = new JPanel();
-        igriskaPanel.setLayout(new BorderLayout());
-
-        // Create a table for the fields and set it up
+        // ---------- TAB: IGRISCA ----------
+        JPanel igriskaPanel = new JPanel(new BorderLayout());
         JTable fieldsTable = new JTable();
-        JScrollPane fieldsScrollPane = new JScrollPane(fieldsTable);
-        igriskaPanel.add(fieldsScrollPane, BorderLayout.CENTER);
+        igriskaPanel.add(new JScrollPane(fieldsTable), BorderLayout.CENTER);
+        refreshFields(fieldsTable);
+        tabbedPane.addTab("Igriska", igriskaPanel);
 
-        // Refresh the fields table with data from the database
-        refreshFields(fieldsTable);  // Calls the method to populate the table
+        // ---------- TAB: MOJE REZERVACIJE ----------
+        JPanel panelRezervacije = new JPanel(new BorderLayout());
+        prikaziMojeRezervacije(panelRezervacije);
+        tabbedPane.addTab("Moje rezervacije", panelRezervacije);
 
-        // Add the "Igriska" tab to the tabbed pane
-        tabbedPane.addTab("Igrisca", igriskaPanel);  // "Igriska" tab
-
-        // Create the "Rezervacije" tab and its content (no functionality for now)
-
-        // Zavihek REZERVACIJE
+        // ---------- TAB: REZERVACIJE ----------
         JPanel rezervacijePanel = new JPanel(new BorderLayout());
 
+        // Zgornji panel z izbirnikom datuma in gumbom za osvežitev
         JPanel topPanel = new JPanel();
         topPanel.add(new JLabel("Izberi datum"));
         UtilDateModel model = new UtilDateModel();
@@ -74,22 +71,16 @@ public class MainPage {
         p.put("text.today", "Danes");
         p.put("text.month", "Mesec");
         p.put("text.year", "Leto");
-
         JDatePanelImpl datePanel = new JDatePanelImpl(model, p);
         JDatePickerImpl datePicker = new JDatePickerImpl(datePanel, new DateLabelFormatter());
-
         topPanel.add(datePicker);
-
-
         JButton osveziButton = new JButton("Osveži");
         topPanel.add(osveziButton);
-
         rezervacijePanel.add(topPanel, BorderLayout.NORTH);
 
-// Tabela z igrišči
+        // Tabela z igrišči in njihovim statusom
         String[] stolpci = {"Ime", "Lokacija", "Kapaciteta", "Status"};
-        Object[][] data = new Object[0][4];  // za začetek prazno
-        DefaultTableModel rezervacijeModel = new DefaultTableModel(data, stolpci) {
+        DefaultTableModel rezervacijeModel = new DefaultTableModel(stolpci, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -98,51 +89,43 @@ public class MainPage {
         JTable rezervacijeTable = new JTable(rezervacijeModel);
         rezervacijePanel.add(new JScrollPane(rezervacijeTable), BorderLayout.CENTER);
 
-// Gumb za rezervacijo
+        // Gumb za rezervacijo
         JButton rezervirajButton = new JButton("Rezerviraj izbrano");
         rezervacijePanel.add(rezervirajButton, BorderLayout.SOUTH);
 
-// Dodaj zavihek
         tabbedPane.addTab("Rezervacije", rezervacijePanel);
 
-        // TOP BAR Z GUMBOM ODJAVA
+        // ---------- GORNA ORODNO VRSTICO ----------
         JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton logoutButton = new JButton("Odjava");
+        logoutButton.addActionListener(e -> logout());
         topBar.add(logoutButton);
 
-        logoutButton.addActionListener(e -> logout());
-
-        frame.add(topBar, BorderLayout.NORTH);  // Dodamo top bar zgoraj
-
-
-// Add the tabbed pane to the main window
+        frame.add(topBar, BorderLayout.NORTH);
         frame.add(tabbedPane, BorderLayout.CENTER);
         frame.setVisible(true);
 
-// NOVO: mapa vrstica -> ID igrišča
+        // Mapa vrstica -> ID igrišča
         Map<Integer, Integer> vrsticaIdMap = new HashMap<>();
 
+        // OSVEŽI funkcionalnost
         osveziButton.addActionListener(e -> {
             java.util.Date selectedDate = (java.util.Date) datePicker.getModel().getValue();
             if (selectedDate == null) {
                 JOptionPane.showMessageDialog(frame, "Prosim izberi datum.");
                 return;
             }
-            LocalDate localDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
 
-
+            LocalDate localDate = selectedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
             List<Field> fields = dbManager.getAllFields();
-            rezervacijeModel.setRowCount(0);  // počisti tabelo
-            vrsticaIdMap.clear(); // počistimo mapo
+            rezervacijeModel.setRowCount(0);
+            vrsticaIdMap.clear();
 
             int vrsticaIndex = 0;
-
             for (Field field : fields) {
                 try {
-
                     Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
                     Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
-
                     boolean prosto = dbManager.jeIgrisceProsto(field.getId(), zacetek, konec);
                     String status = prosto ? "PROSTO" : "ZASEDENO";
 
@@ -162,7 +145,6 @@ public class MainPage {
                 }
             }
 
-            // Barvanje vrstic
             rezervacijeTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
                 @Override
                 public Component getTableCellRendererComponent(JTable table, Object value,
@@ -179,6 +161,7 @@ public class MainPage {
             });
         });
 
+        // REZERVIRAJ funkcionalnost
         rezervirajButton.addActionListener(e -> {
             int row = rezervacijeTable.getSelectedRow();
             if (row == -1) {
@@ -192,35 +175,23 @@ public class MainPage {
                 return;
             }
 
-            // Dobimo ID iz mape
             int igrisceId = vrsticaIdMap.get(row);
             java.util.Date selectedDate = (java.util.Date) datePicker.getModel().getValue();
             if (selectedDate == null) {
                 JOptionPane.showMessageDialog(frame, "Prosim izberi datum.");
                 return;
             }
-            LocalDate localDate = selectedDate.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate();
 
+            LocalDate localDate = selectedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
+            Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
+            int userId = Session.getCurrentUserId();
 
             try {
-                // Pretvori v LocalDate
-
-
-                // Začetek rezervacije - ob 00:00
-                Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
-
-                // Konec rezervacije - naslednji dan ob 00:00
-                Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
-
-                // Uporabniški ID - tukaj uporabi ID prijavljenega uporabnika, trenutno je hardcoded na 1
-                int userId = 1;  // <-- začasno hardcoded user (če imaš prijavo, to spremeni)
-
-                // Kliči funkcijo za rezervacijo
                 boolean uspeh = dbManager.rezervirajIgrisce(igrisceId, zacetek, konec);
-
                 if (uspeh) {
                     JOptionPane.showMessageDialog(frame, "Uspešno rezervirano!");
-                    osveziButton.doClick();  // osveži tabelo
+                    osveziButton.doClick();
                 } else {
                     JOptionPane.showMessageDialog(frame, "Rezervacija ni uspela.");
                 }
@@ -229,8 +200,48 @@ public class MainPage {
                 JOptionPane.showMessageDialog(frame, "Napaka pri rezervaciji.");
             }
         });
-
     }
+
+    private void prikaziMojeRezervacije(JPanel panel) {
+        int userId = Session.getCurrentUserId();
+
+        // Tabela s stolpci
+        String[] stolpci = {"Igrišče", "Lokacija", "Začetek", "Konec"};
+        DefaultTableModel model = new DefaultTableModel(stolpci, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable tabela = new JTable(model);
+
+        // Pridobi rezervacije iz baze
+        List<Reservation> rezervacije = dbManager.getRezervacijeUporabnika(userId);
+
+        for (Reservation r : rezervacije) {
+            // Pravilno pridobimo ime igrišča glede na ID
+            String imeIgrisce = dbManager.getImeIgriscaById(r.getIgrisceId());
+
+            // Pravilno pridobimo lokacijo preko kraja povezanega z igriščem
+            int krajId = dbManager.getKrajIdByIgrisceId(r.getIgrisceId());
+            String lokacija = dbManager.getKrajNameById(krajId);
+
+            model.addRow(new Object[]{
+                    imeIgrisce,
+                    lokacija,
+                    r.getZacetek().toString(),
+                    r.getKonec().toString()
+            });
+        }
+
+        panel.removeAll();
+        panel.add(new JScrollPane(tabela), BorderLayout.CENTER);
+        panel.revalidate();
+        panel.repaint();
+    }
+
+
+
 
     private void logout() {
         Session.logout();
@@ -266,6 +277,7 @@ public class MainPage {
         fieldsTable.getColumnModel().getColumn(3).setCellRenderer(new ImageRenderer());  // Set image renderer
         fieldsTable.setRowHeight(60);  // Adjust row height for better image display
     }
+
 
     // Method to get ImageIcon for a field (resizing image to fit in the cell)
     private ImageIcon getImageIcon(String path) {
