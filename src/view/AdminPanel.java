@@ -1,6 +1,7 @@
 package view;
 
 import model.Field;
+import model.Session;
 import model.User;
 import db.DatabaseManager;
 import java.awt.event.ActionEvent;
@@ -59,10 +60,15 @@ public class AdminPanel {
         JButton deleteButton = new JButton("Briši");
         deleteButton.addActionListener(e -> deleteField());
 
+        JButton logoutButton = new JButton("Odjava");
+        logoutButton.addActionListener(e -> logout());
+
+
         JPanel controlPanel = new JPanel();
         controlPanel.add(addButton);
         controlPanel.add(refreshButton);
         controlPanel.add(deleteButton);
+        controlPanel.add(logoutButton);
 
         panel.add(scrollPane, BorderLayout.CENTER);
         panel.add(controlPanel, BorderLayout.SOUTH);
@@ -105,12 +111,16 @@ public class AdminPanel {
             }
         });
 
+        JButton logoutButton = new JButton("Odjava");
+        logoutButton.addActionListener(e -> logout());
         // Panel za gumbe
         JPanel usersControlPanel = new JPanel();  // **Pomembno: deklarirajte tukaj**
         usersControlPanel.add(addUserButton);
         usersControlPanel.add(deleteUserButton);
         usersControlPanel.add(refreshUsersButton);
         usersControlPanel.add(changeAdminStatusButton); // Dodajte gumb za spremembo statusa admina
+        usersControlPanel.add(logoutButton); // Dodaj gumb za odjavo
+
 
         // Dodamo elemente v usersPanel
         usersPanel.add(usersScrollPane, BorderLayout.CENTER);
@@ -366,4 +376,20 @@ public class AdminPanel {
             return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         }
     }
+
+    private void logout() {
+        // Kličeš metodo logout v razredu Session, da odjaviš uporabnika
+        Session.logout();
+
+        // Zapreš trenutni AdminPanel okvir
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(fieldsTable); // Poišči nadrejeni okvir
+        if (topFrame != null) {
+            topFrame.dispose();  // Zapri trenutni okvir
+        }
+
+        // Odpri login stran
+        new LoginPage();  // Predpostavljam, da imaš razred LoginPage, ki predstavlja prijavno stran
+    }
+
+
 }
