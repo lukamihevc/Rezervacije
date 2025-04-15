@@ -6,6 +6,8 @@ import java.awt.*;
 import java.util.List;
 import db.DatabaseManager;
 import model.Field;
+import model.Session;
+
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -21,6 +23,7 @@ public class MainPage {
     private JFrame frame;
     private JTabbedPane tabbedPane;
     private DatabaseManager dbManager;
+
 
     public MainPage() {
         dbManager = new DatabaseManager();
@@ -80,6 +83,16 @@ public class MainPage {
 
 // Dodaj zavihek
         tabbedPane.addTab("Rezervacije", rezervacijePanel);
+
+        // TOP BAR Z GUMBOM ODJAVA
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton logoutButton = new JButton("Odjava");
+        topBar.add(logoutButton);
+
+        logoutButton.addActionListener(e -> logout());
+
+        frame.add(topBar, BorderLayout.NORTH);  // Dodamo top bar zgoraj
+
 
 // Add the tabbed pane to the main window
         frame.add(tabbedPane, BorderLayout.CENTER);
@@ -188,9 +201,12 @@ public class MainPage {
             }
         });
 
+    }
 
-
-
+    private void logout() {
+        Session.logout();
+        frame.dispose();
+        new LoginPage();
     }
 
 
