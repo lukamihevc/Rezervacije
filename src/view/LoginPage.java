@@ -1,6 +1,7 @@
 package view;
 import db.DatabaseManager;
 import controller.LoginController;
+import model.Session;
 
 import javax.swing.*;
 import java.awt.*;
@@ -35,6 +36,8 @@ public class LoginPage {
                 if (controller.login(username, password)) {
                     // Preverimo, ali je uporabnik admin
                     DatabaseManager dbManager = new DatabaseManager();  // Tukaj uporabljamo DatabaseManager
+                    int userId = dbManager.getUserIdByEmail(username);// Vrni ID uporabnika iz baze
+                    Session.setCurrentUserId(userId);  // Nastavi ID uporabnika v Session
                     if (dbManager.isAdmin(username)) {  // Kličemo isAdmin iz DatabaseManager
                         JOptionPane.showMessageDialog(frame, "Prijava kot admin uspešna");
                         new AdminPanel(); // Odpri admin panel

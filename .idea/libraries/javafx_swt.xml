@@ -1,16 +1,23 @@
 <component name="libraryTable">
   <library name="javafx-swt">
     <CLASSES>
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx-swt.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.base.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.controls.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.fxml.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.graphics.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.media.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.swing.jar!/" />
-      <root url="jar://$USER_HOME$/Downloads/openjfx-23.0.2_windows-x64_bin-sdk (1)/javafx-sdk-23.0.2/lib/javafx.web.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/postgresql-42.7.5.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/postgresql-42.7.5 (2).jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/spring-security-crypto-5.5.1.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx-swt.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.base.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.controls.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.fxml.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.graphics.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.media.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.swing.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/spring-security-crypto-5.5.1.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/postgresql-42.7.5 (2).jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/lib/javafx.web.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ideaLibSources/spring-security-crypto-5.5.1-sources.jar!/" />
+    </SOURCES>
   </library>
 </component>

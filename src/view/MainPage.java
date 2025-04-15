@@ -9,6 +9,13 @@ import model.Field;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.table.DefaultTableCellRenderer;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.HashMap;
+
+
 
 public class MainPage {
     private JFrame frame;
@@ -41,19 +48,154 @@ public class MainPage {
         tabbedPane.addTab("Igrisca", igriskaPanel);  // "Igriska" tab
 
         // Create the "Rezervacije" tab and its content (no functionality for now)
-        JPanel rezervacijePanel = new JPanel();
-        rezervacijePanel.setLayout(new BorderLayout());
-        rezervacijePanel.add(new JLabel("Rezervacije še niso implementirane."), BorderLayout.CENTER);
 
-        // Add the "Rezervacije" tab to the tabbed pane
-        tabbedPane.addTab("Rezervacije", rezervacijePanel);  // "Rezervacije" tab
+        // Zavihek REZERVACIJE
+        JPanel rezervacijePanel = new JPanel(new BorderLayout());
 
-        // Add the tabbed pane to the main window
+        JPanel topPanel = new JPanel();
+        topPanel.add(new JLabel("Izberi datum (yyyy-MM-dd):"));
+        JTextField datumField = new JTextField(10);
+        topPanel.add(datumField);
+
+        JButton osveziButton = new JButton("Osveži");
+        topPanel.add(osveziButton);
+
+        rezervacijePanel.add(topPanel, BorderLayout.NORTH);
+
+// Tabela z igrišči
+        String[] stolpci = {"Ime", "Lokacija", "Kapaciteta", "Status"};
+        Object[][] data = new Object[0][4];  // za začetek prazno
+        DefaultTableModel rezervacijeModel = new DefaultTableModel(data, stolpci) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable rezervacijeTable = new JTable(rezervacijeModel);
+        rezervacijePanel.add(new JScrollPane(rezervacijeTable), BorderLayout.CENTER);
+
+// Gumb za rezervacijo
+        JButton rezervirajButton = new JButton("Rezerviraj izbrano");
+        rezervacijePanel.add(rezervirajButton, BorderLayout.SOUTH);
+
+// Dodaj zavihek
+        tabbedPane.addTab("Rezervacije", rezervacijePanel);
+
+// Add the tabbed pane to the main window
         frame.add(tabbedPane, BorderLayout.CENTER);
-
-        // Make the window visible
         frame.setVisible(true);
+
+// NOVO: mapa vrstica -> ID igrišča
+        Map<Integer, Integer> vrsticaIdMap = new HashMap<>();
+
+        osveziButton.addActionListener(e -> {
+            String datum = datumField.getText().trim();
+            if (datum.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "Prosim vnesi datum.");
+                return;
+            }
+
+            List<Field> fields = dbManager.getAllFields();
+            rezervacijeModel.setRowCount(0);  // počisti tabelo
+            vrsticaIdMap.clear(); // počistimo mapo
+
+            int vrsticaIndex = 0;
+
+            for (Field field : fields) {
+                try {
+                    LocalDate localDate = LocalDate.parse(datum);
+                    Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
+                    Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
+
+                    boolean prosto = dbManager.jeIgrisceProsto(field.getId(), zacetek, konec);
+                    String status = prosto ? "PROSTO" : "ZASEDENO";
+
+                    rezervacijeModel.addRow(new Object[]{
+                            field.getIme(),
+                            dbManager.getKrajNameById(field.getKrajId()),
+                            field.getKapaciteta(),
+                            status
+                    });
+
+                    vrsticaIdMap.put(vrsticaIndex, field.getId());
+                    vrsticaIndex++;
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(frame, "Napaka pri preverjanju terminov.");
+                }
+            }
+
+            // Barvanje vrstic
+            rezervacijeTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+                @Override
+                public Component getTableCellRendererComponent(JTable table, Object value,
+                                                               boolean isSelected, boolean hasFocus, int row, int column) {
+                    Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                    String status = (String) rezervacijeModel.getValueAt(row, 3);
+                    if ("PROSTO".equals(status)) {
+                        c.setBackground(Color.GREEN);
+                    } else {
+                        c.setBackground(Color.PINK);
+                    }
+                    return c;
+                }
+            });
+        });
+
+        rezervirajButton.addActionListener(e -> {
+            int row = rezervacijeTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(frame, "Izberi igrišče za rezervacijo.");
+                return;
+            }
+
+            String status = (String) rezervacijeModel.getValueAt(row, 3);
+            if (!"PROSTO".equals(status)) {
+                JOptionPane.showMessageDialog(frame, "To igrišče je zasedeno.");
+                return;
+            }
+
+            // Dobimo ID iz mape
+            int igrisceId = vrsticaIdMap.get(row);
+            String datum = datumField.getText().trim();
+
+            try {
+                // Pretvori v LocalDate
+                LocalDate localDate = LocalDate.parse(datum);
+
+                // Začetek rezervacije - ob 00:00
+                Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
+
+                // Konec rezervacije - naslednji dan ob 00:00
+                Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
+
+                // Uporabniški ID - tukaj uporabi ID prijavljenega uporabnika, trenutno je hardcoded na 1
+                int userId = 1;  // <-- začasno hardcoded user (če imaš prijavo, to spremeni)
+
+                // Kliči funkcijo za rezervacijo
+                boolean uspeh = dbManager.rezervirajIgrisce(igrisceId, zacetek, konec);
+
+                if (uspeh) {
+                    JOptionPane.showMessageDialog(frame, "Uspešno rezervirano!");
+                    osveziButton.doClick();  // osveži tabelo
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Rezervacija ni uspela.");
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Napaka pri rezervaciji.");
+            }
+        });
+
+
+
+
     }
+
+
+
+
 
     private void refreshFields(JTable fieldsTable) {
         // Fetch fields data

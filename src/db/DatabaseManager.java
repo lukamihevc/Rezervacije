@@ -1,5 +1,8 @@
 package db;
 
+
+
+import model.Session;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.sql.*;
 import java.util.List;
@@ -8,6 +11,7 @@ import model.Field;  // Uvoz razreda Field
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import model.User;
+import java.sql.Date;
 
 public class DatabaseManager {
     private static final String URL = "jdbc:postgresql://pg-31c972d-rezervacije.c.aivencloud.com:16281/defaultdb?ssl=require";
@@ -445,4 +449,80 @@ public class DatabaseManager {
             System.out.println("Napaka pri povezovanju z bazo: " + e.getMessage());
         }
     }
+
+    public boolean jeIgrisceProsto(int igrisceId, Timestamp zacetek, Timestamp konec) {
+        String sql = "SELECT COUNT(*) FROM rezervacije WHERE igrisce_id = ? AND " +
+                "( (zacetek < ? AND konec > ?) OR (zacetek >= ? AND zacetek < ?) )"; // Popravljen SQL stavek
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, igrisceId);
+            stmt.setTimestamp(2, konec);  // konec rezervacije
+            stmt.setTimestamp(3, zacetek);  // začetek rezervacije
+            stmt.setTimestamp(4, zacetek);  // tvoj predlagani začetek
+            stmt.setTimestamp(5, konec);  // tvoj predlagani konec
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) == 0;  // Če je število rezervacij 0, potem je igrišče prosto
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+    public boolean rezervirajIgrisce(int igrisceId, Timestamp zacetek, Timestamp konec) {
+        // Pridobi ID trenutnega uporabnika iz Session (lahko nastaviš pravilno metodo za pridobivanje uporabnika)
+        int userId = Session.getCurrentUserId();
+
+        // Preveri, ali je uporabnik prijavljen
+        if (userId == -1) {
+            System.out.println("Napaka: Uporabnik ni prijavljen!");
+            return false;
+        }
+
+        // Preveri, ali uporabnik obstaja v tabeli "users"
+        if (!uporabnikObstaja(userId)) {
+            System.out.println("Napaka: Uporabnik s tem ID-jem ne obstaja!");
+            return false;
+        }
+
+        // Vstavi rezervacijo, ker je uporabnik veljaven
+        try {
+            String sql = "INSERT INTO rezervacije (zacetek, konec, user_id, igrisce_id) VALUES (?, ?, ?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setTimestamp(1, zacetek);
+            stmt.setTimestamp(2, konec);
+            stmt.setInt(3, userId);  // Nastavi user_id na trenutni ID uporabnika
+            stmt.setInt(4, igrisceId);
+            stmt.executeUpdate();
+            System.out.println("Rezervacija uspešno dodana!");
+            return true;
+        } catch (SQLException e) {
+            System.out.println("Napaka pri dodajanju rezervacije: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // Funkcija, ki preveri, ali uporabnik obstaja v tabeli "users"
+    private boolean uporabnikObstaja(int userId) {
+        try {
+            String sql = "SELECT COUNT(*) FROM users WHERE id = ?";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, userId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;  // Če je več kot 0, uporabnik obstaja
+            }
+        } catch (SQLException e) {
+            System.out.println("Napaka pri preverjanju uporabnika: " + e.getMessage());
+        }
+        return false;  // Če ni uporabnika
+    }
+
+
+
+
 }
