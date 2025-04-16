@@ -5,6 +5,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.List;
@@ -68,7 +69,7 @@ public class MainPage {
 
 // Spodnji gumbi
         JButton razveljaviButton = new JButton("Razveljavi rezervacijo");
-        JButton spremeniDatumButton = new JButton("Spremeni datum");
+
         JButton osveziRezervacijeButton = new JButton("Osveži moje rezervacije");
 
         osveziRezervacijeButton.addActionListener(e -> {
@@ -82,7 +83,7 @@ public class MainPage {
 
         JPanel bottomPanel = new JPanel();
         bottomPanel.add(razveljaviButton);
-        bottomPanel.add(spremeniDatumButton);
+
         bottomPanel.add(osveziRezervacijeButton);
         panelRezervacije.add(bottomPanel, BorderLayout.SOUTH);
 
@@ -261,39 +262,8 @@ public class MainPage {
         });
 
 
-        // SPREMENI datum funkcionalnost
-        spremeniDatumButton.addActionListener(e -> {
-            int row = mojeRezervacijeTable.getSelectedRow();
-            if (row == -1) {
-                JOptionPane.showMessageDialog(frame, "Izberi rezervacijo za spremembo datuma.");
-                return;
-            }
 
-            // Pridobi ID rezervacije
-            int rezervacijaId = (int) mojeRezervacijeTable.getValueAt(row, 0);
-            java.util.Date selectedDate = (java.util.Date) datePicker.getModel().getValue();
-            if (selectedDate == null) {
-                JOptionPane.showMessageDialog(frame, "Prosim izberi datum.");
-                return;
-            }
 
-            LocalDate localDate = selectedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
-            Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
-            Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
-
-            try {
-                boolean uspeh = dbManager.spremeniDatumRezervacije(rezervacijaId, zacetek, konec);
-                if (uspeh) {
-                    JOptionPane.showMessageDialog(frame, "Datum rezervacije spremenjen!");
-                    prikaziMojeRezervacije(panelRezervacije);
-                } else {
-                    JOptionPane.showMessageDialog(frame, "Napaka pri spreminjanju datuma.");
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(frame, "Napaka pri spreminjanju datuma.");
-            }
-        });
     }
 
 

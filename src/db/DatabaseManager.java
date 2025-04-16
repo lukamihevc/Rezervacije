@@ -287,14 +287,25 @@ public class DatabaseManager {
 
     // Metoda za brisanje igrišča
     public void deleteField(int id) {
-        String query = "CALL delete_field(?)"; // Pravilno za procedure
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        // Prvi korak: Izbriši rezervacijo za določeno igrišče
+        String deleteRezervacijaQuery = "DELETE FROM rezervacije WHERE igrisce_id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(deleteRezervacijaQuery)) {
             stmt.setInt(1, id);
-            stmt.execute(); // execute(), ne executeUpdate(), ker ne gre za UPDATE/DELETE/INSERT
+            stmt.executeUpdate(); // executeUpdate() je primeren, ker bo izveden DELETE
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        // Drugi korak: Izbriši samo igrišče
+        String deleteIgrisceQuery = "DELETE FROM igrisca WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(deleteIgrisceQuery)) {
+            stmt.setInt(1, id);
+            stmt.executeUpdate(); // executeUpdate() bo izvedel DELETE za igrišče
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
 
     public String getKrajNameById(int krajId) {
         String query = "SELECT ime FROM kraji WHERE id = ?";
@@ -612,21 +623,18 @@ public class DatabaseManager {
     }
 
 
-
-    public boolean spremeniDatumRezervacije(int rezervacijaId, Timestamp newZacetek, Timestamp newKonec) {
+    public void updateRezervacijaDatum(int rezervacijaId, Timestamp zacetek, Timestamp konec) throws SQLException {
         String query = "UPDATE rezervacija SET zacetek = ?, konec = ? WHERE id = ?";
-        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setTimestamp(1, newZacetek);
-            stmt.setTimestamp(2, newKonec);
-            stmt.setInt(3, rezervacijaId);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
 
-            int rowsUpdated = stmt.executeUpdate();
-            return rowsUpdated > 0;  // Vrne true, če je bila rezervacija uspešno posodobljena
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            return false;  // Napaka pri posodabljanju rezervacije
+            stmt.setTimestamp(1, zacetek);
+            stmt.setTimestamp(2, konec);
+            stmt.setInt(3, rezervacijaId);
+            stmt.executeUpdate();
         }
     }
+
     public boolean izbrisiRezervacijo(int rezervacijaId) {
         String query = "DELETE FROM rezervacije WHERE id = ?";
         try (Connection conn = connect();
