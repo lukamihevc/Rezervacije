@@ -627,12 +627,13 @@ public class DatabaseManager {
             return false;  // Napaka pri posodabljanju rezervacije
         }
     }
-    public boolean razveljaviRezervacijo(int rezervacijaId) {
-        String sql = "DELETE FROM rezervacija WHERE id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+    public boolean izbrisiRezervacijo(int rezervacijaId) {
+        String query = "DELETE FROM rezervacije WHERE id = ?";
+        try (Connection conn = connect();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, rezervacijaId);
-            return stmt.executeUpdate() > 0;
+            int affectedRows = stmt.executeUpdate();
+            return affectedRows > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;

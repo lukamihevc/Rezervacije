@@ -231,6 +231,7 @@ public class MainPage {
         });
 
         // RAZVELJAVI funkcionalnost
+        // RAZVELJAVI funkcionalnost
         razveljaviButton.addActionListener(e -> {
             int row = mojeRezervacijeTable.getSelectedRow();
             if (row == -1) {
@@ -238,9 +239,27 @@ public class MainPage {
                 return;
             }
 
-            // Preberi ID rezervacije iz tabele
+            int rezervacijaId = (int) mojeRezervacijeTable.getValueAt(row, 0);
 
+            int confirm = JOptionPane.showConfirmDialog(frame, "Ali res želite razveljaviti to rezervacijo?", "Potrditev", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) {
+                return;
+            }
+
+            try {
+                boolean uspeh = dbManager.izbrisiRezervacijo(rezervacijaId);
+                if (uspeh) {
+                    JOptionPane.showMessageDialog(frame, "Rezervacija uspešno razveljavljena.");
+                    prikaziMojeRezervacije((JPanel) mojeRezervacijeTable.getParent().getParent().getParent()); // osveži
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Rezervacije ni bilo mogoče razveljaviti.");
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Napaka pri razveljavitvi rezervacije.");
+            }
         });
+
 
         // SPREMENI datum funkcionalnost
         spremeniDatumButton.addActionListener(e -> {
@@ -297,6 +316,7 @@ public class MainPage {
             }
         };
         JTable tabela = new JTable(model);
+        mojeRezervacijeTable = tabela;
 
         try {
             // Pridobi rezervacije iz baze
