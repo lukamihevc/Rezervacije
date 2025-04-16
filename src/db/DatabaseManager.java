@@ -543,12 +543,20 @@ public class DatabaseManager {
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
+                int igrisceId = rs.getInt("igrisce_id");
+                int krajId = rs.getInt("kraj_id");
+
+                // Preverite, ali sta igrisceId in krajId veljavna
+                if (igrisceId <= 0 || krajId <= 0) {
+                    continue;  // Preskočite to vrstico, če so ID-ji napačni
+                }
+
                 Reservation r = new Reservation(
                         rs.getInt("id"),
                         rs.getTimestamp("zacetek"),
                         rs.getTimestamp("konec"),
-                        rs.getInt("igrisce_id"),
-                        rs.getInt("kraj_id")
+                        igrisceId,
+                        krajId
                 );
                 rezervacije.add(r);
             }
@@ -572,6 +580,8 @@ public class DatabaseManager {
 
             if (rs.next()) {
                 ime = rs.getString("ime");
+            } else {
+                ime = "Neznano Igrišče";  // Vrnite privzeto ime, če ni najdeno
             }
 
         } catch (SQLException e) {
@@ -580,6 +590,7 @@ public class DatabaseManager {
 
         return ime;
     }
+
     public int getKrajIdByIgrisceId(int igrisceId) {
         int krajId = -1;
 
@@ -598,6 +609,34 @@ public class DatabaseManager {
         }
 
         return krajId;
+    }
+
+
+
+    public boolean spremeniDatumRezervacije(int rezervacijaId, Timestamp newZacetek, Timestamp newKonec) {
+        String query = "UPDATE rezervacija SET zacetek = ?, konec = ? WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setTimestamp(1, newZacetek);
+            stmt.setTimestamp(2, newKonec);
+            stmt.setInt(3, rezervacijaId);
+
+            int rowsUpdated = stmt.executeUpdate();
+            return rowsUpdated > 0;  // Vrne true, če je bila rezervacija uspešno posodobljena
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            return false;  // Napaka pri posodabljanju rezervacije
+        }
+    }
+    public boolean razveljaviRezervacijo(int rezervacijaId) {
+        String sql = "DELETE FROM rezervacija WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, rezervacijaId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
 

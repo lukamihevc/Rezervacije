@@ -5,6 +5,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.List;
 import db.DatabaseManager;
@@ -35,9 +36,10 @@ public class MainPage {
     private JTabbedPane tabbedPane;
     private DatabaseManager dbManager;
     private JTable mojeRezervacijeTable;
+    private Map<Integer, Integer> vrsticaIdMap;
+
 
     public MainPage() {
-
         dbManager = new DatabaseManager();
 
         frame = new JFrame("Glavna stran");
@@ -58,6 +60,16 @@ public class MainPage {
         // ---------- TAB: MOJE REZERVACIJE ----------
         JPanel panelRezervacije = new JPanel(new BorderLayout());
         prikaziMojeRezervacije(panelRezervacije);
+
+        // Gumbi za razveljavitev in spremembo datuma
+        JButton razveljaviButton = new JButton("Razveljavi rezervacijo");
+        JButton spremeniDatumButton = new JButton("Spremeni datum");
+
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.add(razveljaviButton);
+        bottomPanel.add(spremeniDatumButton);
+        panelRezervacije.add(bottomPanel, BorderLayout.SOUTH);  // Add the buttons here
+
         tabbedPane.addTab("Moje rezervacije", panelRezervacije);
 
         // ---------- TAB: REZERVACIJE ----------
@@ -106,7 +118,7 @@ public class MainPage {
         frame.setVisible(true);
 
         // Mapa vrstica -> ID igrišča
-        Map<Integer, Integer> vrsticaIdMap = new HashMap<>();
+        vrsticaIdMap = new HashMap<>();
 
         // OSVEŽI funkcionalnost
         osveziButton.addActionListener(e -> {
@@ -200,10 +212,64 @@ public class MainPage {
                 JOptionPane.showMessageDialog(frame, "Napaka pri rezervaciji.");
             }
         });
+
+        // RAZVELJAVI funkcionalnost
+        razveljaviButton.addActionListener(e -> {
+            int row = mojeRezervacijeTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(frame, "Izberi rezervacijo za razveljavitev.");
+                return;
+            }
+
+            // Preberi ID rezervacije iz tabele
+
+        });
+
+        // SPREMENI datum funkcionalnost
+        spremeniDatumButton.addActionListener(e -> {
+            int row = mojeRezervacijeTable.getSelectedRow();
+            if (row == -1) {
+                JOptionPane.showMessageDialog(frame, "Izberi rezervacijo za spremembo datuma.");
+                return;
+            }
+
+            // Pridobi ID rezervacije
+            int rezervacijaId = (int) mojeRezervacijeTable.getValueAt(row, 0);
+            java.util.Date selectedDate = (java.util.Date) datePicker.getModel().getValue();
+            if (selectedDate == null) {
+                JOptionPane.showMessageDialog(frame, "Prosim izberi datum.");
+                return;
+            }
+
+            LocalDate localDate = selectedDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            Timestamp zacetek = Timestamp.valueOf(localDate.atStartOfDay());
+            Timestamp konec = Timestamp.valueOf(localDate.plusDays(1).atStartOfDay());
+
+            try {
+                boolean uspeh = dbManager.spremeniDatumRezervacije(rezervacijaId, zacetek, konec);
+                if (uspeh) {
+                    JOptionPane.showMessageDialog(frame, "Datum rezervacije spremenjen!");
+                    prikaziMojeRezervacije(panelRezervacije);
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Napaka pri spreminjanju datuma.");
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Napaka pri spreminjanju datuma.");
+            }
+        });
     }
+
+
 
     private void prikaziMojeRezervacije(JPanel panel) {
         int userId = Session.getCurrentUserId();
+
+        // Preverimo, ali je uporabnik prijavljen
+        if (userId == -1) {
+            JOptionPane.showMessageDialog(frame, "Uporabnik ni prijavljen!");
+            return;
+        }
 
         // Tabela s stolpci
         String[] stolpci = {"Igrišče", "Lokacija", "Začetek", "Konec"};
@@ -215,30 +281,47 @@ public class MainPage {
         };
         JTable tabela = new JTable(model);
 
-        // Pridobi rezervacije iz baze
-        List<Reservation> rezervacije = dbManager.getRezervacijeUporabnika(userId);
+        try {
+            // Pridobi rezervacije iz baze
+            List<Reservation> rezervacije = dbManager.getRezervacijeUporabnika(userId);
 
-        for (Reservation r : rezervacije) {
-            // Pravilno pridobimo ime igrišča glede na ID
-            String imeIgrisce = dbManager.getImeIgriscaById(r.getIgrisceId());
+            if (rezervacije.isEmpty()) {
+                JOptionPane.showMessageDialog(frame, "Ni nobenih rezervacij za prikaz.");
+            }
 
-            // Pravilno pridobimo lokacijo preko kraja povezanega z igriščem
-            int krajId = dbManager.getKrajIdByIgrisceId(r.getIgrisceId());
-            String lokacija = dbManager.getKrajNameById(krajId);
+            for (Reservation r : rezervacije) {
+                // Pravilno pridobimo ime igrišča glede na ID
+                String imeIgrisce = dbManager.getImeIgriscaById(r.getIgrisceId());
 
-            model.addRow(new Object[]{
-                    imeIgrisce,
-                    lokacija,
-                    r.getZacetek().toString(),
-                    r.getKonec().toString()
-            });
+                // Pravilno pridobimo lokacijo preko kraja povezanega z igriščem
+                int krajId = dbManager.getKrajIdByIgrisceId(r.getIgrisceId());
+                String lokacija = dbManager.getKrajNameById(krajId);
+
+                // Obrazec za prikaz datuma
+                String zacetek = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(r.getZacetek());
+                String konec = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(r.getKonec());
+
+                model.addRow(new Object[]{
+                        imeIgrisce,
+                        lokacija,
+                        zacetek,
+                        konec
+                });
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame, "Napaka pri pridobivanju rezervacij.");
         }
 
+        // Osveži prikaz tabele
         panel.removeAll();
         panel.add(new JScrollPane(tabela), BorderLayout.CENTER);
         panel.revalidate();
         panel.repaint();
+        mojeRezervacijeTable = tabela;
     }
+
 
 
 
