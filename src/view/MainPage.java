@@ -59,18 +59,35 @@ public class MainPage {
 
         // ---------- TAB: MOJE REZERVACIJE ----------
         JPanel panelRezervacije = new JPanel(new BorderLayout());
-        prikaziMojeRezervacije(panelRezervacije);
 
-        // Gumbi za razveljavitev in spremembo datuma
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        panelRezervacije.add(centerPanel, BorderLayout.CENTER);
+
+// Naloži rezervacije v centerPanel
+        prikaziMojeRezervacije(centerPanel);
+
+// Spodnji gumbi
         JButton razveljaviButton = new JButton("Razveljavi rezervacijo");
         JButton spremeniDatumButton = new JButton("Spremeni datum");
+        JButton osveziRezervacijeButton = new JButton("Osveži moje rezervacije");
+
+        osveziRezervacijeButton.addActionListener(e -> {
+            try {
+                prikaziMojeRezervacije(centerPanel); // OSVEŽI SAMO TABELNI DEL!
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Napaka pri osveževanju.");
+            }
+        });
 
         JPanel bottomPanel = new JPanel();
         bottomPanel.add(razveljaviButton);
         bottomPanel.add(spremeniDatumButton);
-        panelRezervacije.add(bottomPanel, BorderLayout.SOUTH);  // Add the buttons here
+        bottomPanel.add(osveziRezervacijeButton);
+        panelRezervacije.add(bottomPanel, BorderLayout.SOUTH);
 
         tabbedPane.addTab("Moje rezervacije", panelRezervacije);
+
 
         // ---------- TAB: REZERVACIJE ----------
         JPanel rezervacijePanel = new JPanel(new BorderLayout());
@@ -271,8 +288,8 @@ public class MainPage {
             return;
         }
 
-        // Tabela s stolpci
-        String[] stolpci = {"Igrišče", "Lokacija", "Začetek", "Konec"};
+        // Tabela s stolpci (ID je potreben, a bo kasneje skrit)
+        String[] stolpci = {"ID", "Igrišče", "Lokacija", "Začetek", "Konec"};
         DefaultTableModel model = new DefaultTableModel(stolpci, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -290,18 +307,15 @@ public class MainPage {
             }
 
             for (Reservation r : rezervacije) {
-                // Pravilno pridobimo ime igrišča glede na ID
                 String imeIgrisce = dbManager.getImeIgriscaById(r.getIgrisceId());
-
-                // Pravilno pridobimo lokacijo preko kraja povezanega z igriščem
                 int krajId = dbManager.getKrajIdByIgrisceId(r.getIgrisceId());
                 String lokacija = dbManager.getKrajNameById(krajId);
 
-                // Obrazec za prikaz datuma
                 String zacetek = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(r.getZacetek());
                 String konec = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(r.getKonec());
 
                 model.addRow(new Object[]{
+                        r.getId(), // ID rezervacije – skrit
                         imeIgrisce,
                         lokacija,
                         zacetek,
@@ -314,13 +328,22 @@ public class MainPage {
             JOptionPane.showMessageDialog(frame, "Napaka pri pridobivanju rezervacij.");
         }
 
-        // Osveži prikaz tabele
+        // Skrij stolpec z ID-jem (0. stolpec)
+        tabela.getColumnModel().getColumn(0).setMinWidth(0);
+        tabela.getColumnModel().getColumn(0).setMaxWidth(0);
+        tabela.getColumnModel().getColumn(0).setWidth(0);
+
+        // Osveži prikaz tabele (pusti gumbe nedotaknjene)
         panel.removeAll();
-        panel.add(new JScrollPane(tabela), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(tabela);
+        panel.add(scrollPane, BorderLayout.CENTER);
         panel.revalidate();
         panel.repaint();
+
+        // Shranimo tabelo za uporabo drugje
         mojeRezervacijeTable = tabela;
     }
+
 
 
 
